@@ -395,3 +395,27 @@ def test_has_dotnet48_runtime_ignores_other_keys(harness, tmp_path):
         '"Install"=dword:00000001\n'
     )
     assert harness.has_dotnet48_runtime() is False
+
+
+# --------------------------------------------------------------------------- #
+# launch environment
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize("session", ["wayland", "x11"])
+@pytest.mark.parametrize("gpu_id", ["auto", "nvidia_0", "amd_1"])
+def test_launch_env_leaves_dxvk_config_unset(harness, ali, monkeypatch, session, gpu_id):
+    """DXVK_CONFIG breaks WPF under DXVK d3d9 (white windows, sluggish UI)."""
+    gui = ali.AffinityInstallerGUI
+    harness.get_vulkan_runtime_env_vars = gui.get_vulkan_runtime_env_vars.__get__(harness)
+    harness.get_dxvk_env_vars = gui.get_dxvk_env_vars.__get__(harness)
+    harness.get_selected_gpu = lambda: gpu_id
+    harness.has_nvidia_gpu = lambda: gpu_id.startswith(("nvidia_", "auto"))
+    harness.has_amd_gpu = lambda: gpu_id.startswith("amd_")
+    harness.get_dxvk_vkd3d_preference = lambda: "dxvk"
+    monkeypatch.setenv("XDG_SESSION_TYPE", session)
+
+    env = harness.get_vulkan_runtime_env_vars()
+    assert "DXVK_CONFIG" not in env
+    assert env["DXVK_ASYNC"] == "0"
+    assert "DXVK_CONFIG" not in harness.get_dxvk_env_vars()

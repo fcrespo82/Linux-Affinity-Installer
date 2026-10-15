@@ -7855,17 +7855,21 @@ class AffinityInstallerGUI(QMainWindow):
 
     def get_dxvk_env_vars(self):
         """Get DXVK environment variables for AMD GPU or NVIDIA GPU with DXVK preference"""
+        # No DXVK_CONFIG: when DXVK provides d3d9 for WPF (the Affinity UI),
+        # d3d9.deferSurfaceCreation makes new windows (Welcome, Settings) render
+        # white and d3d9.shaderModel = 1 drops WPF below shader model 2, which
+        # makes the UI sluggish. See docs/Known-issues.md.
         gpu_id = self.get_selected_gpu()
         if self.has_nvidia_gpu() and (
             gpu_id.startswith("nvidia_") or gpu_id.startswith("auto")
         ):
             preference = self.get_dxvk_vkd3d_preference()
             if preference == "dxvk":
-                return 'DXVK_ASYNC=0 DXVK_CONFIG="d3d9.deferSurfaceCreation = True; d3d9.shaderModel = 1" '
+                return "DXVK_ASYNC=0 "
         elif self.has_amd_gpu() and (
             gpu_id.startswith("amd_") or gpu_id.startswith("auto")
         ):
-            return 'DXVK_ASYNC=0 DXVK_CONFIG="d3d9.deferSurfaceCreation = True; d3d9.shaderModel = 1" '
+            return "DXVK_ASYNC=0 "
         return ""
 
     def get_vulkan_runtime_env_vars(self, gpu_id=None):
@@ -7874,9 +7878,9 @@ class AffinityInstallerGUI(QMainWindow):
         if gpu_id is None:
             gpu_id = self.get_selected_gpu()
 
+        # DXVK_CONFIG is left unset on purpose; see get_dxvk_env_vars().
         env_vars = {
             "DXVK_ASYNC": "0",
-            "DXVK_CONFIG": "d3d9.deferSurfaceCreation = True; d3d9.shaderModel = 1",
             "DXVK_LOG_LEVEL": "none",
             "VKD3D_DEBUG": "none",
             "VKD3D_FEATURE_LEVEL": "12_1",
